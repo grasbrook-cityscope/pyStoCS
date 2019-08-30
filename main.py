@@ -48,12 +48,14 @@ if __name__ == "__main__":
         curtype = cell[0]
         if curtype in js["white"]:
             numWhiteCells += 1
-        elif curtype in js["white"]:
+        elif curtype in js["grey"]:
             numGreyCells += 1
         else:
             numUnknownCells += 1
 
-    print("m² white: ", numWhiteCells * gridDef.cellSize * gridDef.cellSize)
-    print("m² grey: ", numGreyCells * gridDef.cellSize * gridDef.cellSize)
-    print("m² unknown: ", numUnknownCells * gridDef.cellSize * gridDef.cellSize)
+    expectedRain = 0.750 # in m³/m²a
+
+    print("m³ white water to be handled: ",   numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    print("m³ grey water to be handled: ",    numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    print("m³ unknown water to be handled: ", numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
 
