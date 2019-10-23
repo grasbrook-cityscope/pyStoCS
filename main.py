@@ -23,6 +23,7 @@ class Grid:
         ret.cellSize = data["header"]["spatial"]["cellSize"]
         ret.ncols = data["header"]["spatial"]["ncols"]
         ret.nrows = data["header"]["spatial"]["nrows"]
+        ret.mapping = data["header"]["mapping"]["type"]
         return ret
 
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     numUnknownCells = 0
         
     for cell in gridData:
-        curtype = cell[0]
+        curtype = gridDef.mapping[cell[1]]
         if curtype in js["white"]:
             numWhiteCells += 1
         elif curtype in js["grey"]:
@@ -55,7 +56,22 @@ if __name__ == "__main__":
 
     expectedRain = 0.750 # in m³/m²a
 
-    print("m³ white water to be handled: ",   numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
-    print("m³ grey water to be handled: ",    numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
-    print("m³ unknown water to be handled: ", numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+    graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+    unknown_m3 = numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain
 
+    print("m³ white water to be handled: ", whitewater_m3)
+    print("m³ grey water to be handled: ", graywater_m3)
+    print("m³ unknown water to be handled: ", unknown_m3)
+
+    post_address = getFromCfg("output_url")
+    data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3}
+
+    import requests
+    r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json'})
+    print(r)
+    if not r.status_code == 200:
+        print("could not post result to cityIO")
+        print("Error code", r.status_code)
+    else:
+        print("Successfully posted to cityIO", r.status_code)
