@@ -8,7 +8,7 @@ def getFromCfg(key : str) -> str:
         return js[key]
 
 def getCurrentState():
-    with urllib.request.urlopen(getFromCfg("input_url")) as url:
+    with urllib.request.urlopen(getFromCfg("input_url")) as url:    # todo: do with requests instead of urllib
         return json.loads(url.read().decode())
     return None
 
@@ -27,46 +27,8 @@ class Grid:
         ret.typeidx = data["header"]["block"].index("type")
         return ret
 
-
-
-if __name__ == "__main__":
-    data = getCurrentState()
-    if not data:
-        print("couldn't load input_url!")
-        exit()
-
-    gridDef = Grid.fromCityIO(data)
-    gridData = data["grid"]
-
-    js = {}
-    with open("typedefs.json") as file:
-        js = json.load(file)
-
-    numWhiteCells = 0
-    numGreyCells = 0
-    numUnknownCells = 0
-        
-    for cell in gridData:
-        curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
-        if curtype in js["white"]:
-            numWhiteCells += 1
-        elif curtype in js["grey"]:
-            numGreyCells += 1
-        else:
-            numUnknownCells += 1
-
-    expectedRain = 0.750 # in m³/m²a
-
-    whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
-    graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
-    unknown_m3 = numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain
-
-    print("m³ white water to be handled: ", whitewater_m3)
-    print("m³ grey water to be handled: ", graywater_m3)
-    print("m³ unknown water to be handled: ", unknown_m3)
-
+def sendToCityIO(data):
     post_address = getFromCfg("output_url")
-    data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3}
 
     import requests
     r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json'})
@@ -76,3 +38,44 @@ if __name__ == "__main__":
         print("Error code", r.status_code)
     else:
         print("Successfully posted to cityIO", r.status_code)
+
+if __name__ == "__main__":
+    data = getCurrentState()
+    if not data:
+        print("couldn't load input_url!")
+        exit()
+
+    gridDef = Grid.fromCityIO(data)
+    gridData = data["grid"]
+    gridHash = data["meta"]["hashes"]["grid"]
+
+    typejs = {}
+    with open("typedefs.json") as file:
+        typejs = json.load(file)
+
+    numWhiteCells = 0
+    numGreyCells = 0
+    numUnknownCells = 0
+        
+    for cell in gridData:
+        curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
+        if curtype in typejs["white"]:
+            numWhiteCells += 1
+        elif curtype in typejs["grey"]:
+            numGreyCells += 1
+        else:
+            numUnknownCells += 1
+
+    expectedRain = 0.750 # in m³/m²a # todo: get from config
+
+    whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+    graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+    unknown_m3 = numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+
+    print("m³ white water to be handled: ", whitewater_m3)
+    print("m³ grey water to be handled: ", graywater_m3)
+    print("m³ unknown water to be handled: ", unknown_m3)
+
+    data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
+
+    sendToCityIO(data)
