@@ -8,11 +8,18 @@ Output: Amount of retained/drained white-/graywater
 
 Requires
 * python3
+* requests
+* docker optional
 
+```./install.sh``` (docker)
+
+```pip install -r requirements.txt``` (without docker)
 
 ### Usage
 
-```python main.py```
+```./run.sh``` (docker)
+
+```python main.py``` (without docker)
 
 
 ### Description
