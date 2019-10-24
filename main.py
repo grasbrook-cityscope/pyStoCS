@@ -7,24 +7,24 @@ def getFromCfg(key : str) -> str:
         js = json.load(file)
         return js[key]
 
-def getCurrentState():
-    with urllib.request.urlopen(getFromCfg("input_url")) as url:    # todo: do with requests instead of urllib
+def getCurrentState(topic=""):
+    with urllib.request.urlopen(getFromCfg("input_url")+topic) as url:    # todo: do with requests instead of urllib
         return json.loads(url.read().decode())
     return None
 
-class Grid:
+class Table:
     cellSize = 0
     ncols = 0
     nrows = 0
 
     @staticmethod
     def fromCityIO(data):
-        ret = Grid()
-        ret.cellSize = data["header"]["spatial"]["cellSize"]
-        ret.ncols = data["header"]["spatial"]["ncols"]
-        ret.nrows = data["header"]["spatial"]["nrows"]
-        ret.mapping = data["header"]["mapping"]["type"]
-        ret.typeidx = data["header"]["block"].index("type")
+        ret = Table()
+        ret.cellSize = data["spatial"]["cellSize"]
+        ret.ncols = data["spatial"]["ncols"]
+        ret.nrows = data["spatial"]["nrows"]
+        ret.mapping = data["mapping"]["type"]
+        ret.typeidx = data["block"].index("type")
         return ret
 
 def sendToCityIO(data):
@@ -39,15 +39,14 @@ def sendToCityIO(data):
     else:
         print("Successfully posted to cityIO", r.status_code)
 
-if __name__ == "__main__":
-    data = getCurrentState()
-    if not data:
+def run():
+    gridDef = Table.fromCityIO(getCurrentState("header"))
+    if not gridDef:
         print("couldn't load input_url!")
         exit()
 
-    gridDef = Grid.fromCityIO(data)
-    gridData = data["grid"]
-    gridHash = data["meta"]["hashes"]["grid"]
+    gridData = getCurrentState("grid")
+    gridHash = getCurrentState("meta/hashes/grid")
 
     typejs = {}
     with open("typedefs.json") as file:
@@ -79,3 +78,16 @@ if __name__ == "__main__":
     data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
 
     sendToCityIO(data)
+    
+
+if __name__ == "__main__":
+    oldHash = ""
+
+    while True:
+        gridHash = getCurrentState("meta/hashes/grid")
+        # TODO: wait a couple of seconds
+        if gridHash != oldHash:
+            run()
+            oldHash = gridHash
+        else:
+            print("waiting for grid change")
