@@ -24,6 +24,7 @@ class Grid:
         ret.ncols = data["header"]["spatial"]["ncols"]
         ret.nrows = data["header"]["spatial"]["nrows"]
         ret.mapping = data["header"]["mapping"]["type"]
+        ret.typeidx = data["header"]["block"].index("type")
         return ret
 
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     numUnknownCells = 0
         
     for cell in gridData:
-        curtype = gridDef.mapping[cell[0]]["type"]
+        curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
         if curtype in js["white"]:
             numWhiteCells += 1
         elif curtype in js["grey"]:
