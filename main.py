@@ -46,7 +46,7 @@ if __name__ == "__main__":
     numUnknownCells = 0
         
     for cell in gridData:
-        curtype = gridDef.mapping[cell[1]]
+        curtype = gridDef.mapping[cell[0]]["type"]
         if curtype in js["white"]:
             numWhiteCells += 1
         elif curtype in js["grey"]:

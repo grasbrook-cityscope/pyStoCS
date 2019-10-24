@@ -1,4 +1,4 @@
 {
-    "white" : ["housing","housing2","working","working_2"],
+    "white" : ["building"],
     "grey" : ["street"]
 }
