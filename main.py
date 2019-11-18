@@ -57,7 +57,7 @@ def run():
     numUnknownCells = 0
         
     for cell in gridData:
-        if(cell is None): continue
+        if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
         if curtype in typejs["white"]:
             numWhiteCells += 1
