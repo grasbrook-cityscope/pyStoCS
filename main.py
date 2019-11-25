@@ -1,6 +1,7 @@
 import json
 import requests
 import time
+import argparse
 
 class Table:
     cellSize = 0
@@ -23,8 +24,11 @@ def getFromCfg(key : str) -> str:
         js = json.load(file)
         return js[key]
 
-def getCurrentState(topic="", token=None):
-    get_address = getFromCfg("input_url")+topic
+def getCurrentState(topic="", endpoint=-1, token=None):
+    if endpoint == -1 or endpoint == None:
+        get_address = getFromCfg("input_url")+topic
+    else:
+        get_address = getFromCfg("input_urls")[endpoint]+topic
     if token is None:
         r = requests.get(get_address, headers={'Content-Type': 'application/json'})
     else:
@@ -36,8 +40,12 @@ def getCurrentState(topic="", token=None):
 
     return r.json()
 
-def sendToCityIO(data, token=None):
-    post_address = getFromCfg("output_url")
+def sendToCityIO(data, endpoint=-1, token=None):
+    
+    if endpoint == -1 or endpoint == None:
+        post_address = getFromCfg("output_url")
+    else:
+        post_address = getFromCfg("output_urls")[endpoint]
 
     if token is None:
         r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json'})
@@ -45,19 +53,19 @@ def sendToCityIO(data, token=None):
         r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
     print(r)
     if not r.status_code == 200:
-        print("could not post result to cityIO")
+        print("could not post result to cityIO", post_address)
         print("Error code", r.status_code)
     else:
-        print("Successfully posted to cityIO", r.status_code)
+        print("Successfully posted to cityIO", post_address, r.status_code)
 
-def run(token=None):
+def run(endpoint=-1, token=None):
     gridDef = Table.fromCityIO(getCurrentState("header", token))
     if not gridDef:
         print("couldn't load input_url!")
         exit()
 
-    gridData = getCurrentState("grid", token)
-    gridHash = getCurrentState("meta/hashes/grid", token)
+    gridData = getCurrentState("grid", endpoint, token)
+    gridHash = getCurrentState("meta/hashes/grid", endpoint, token)
 
     typejs = {}
     with open("typedefs.json") as file:
@@ -89,10 +97,15 @@ def run(token=None):
 
     data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
 
-    sendToCityIO(data, token)
+    sendToCityIO(data, endpoint, token)
     
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--endpoint', type=int, default=-1,help="endpoint url to choose from config.ini/input_urls")
+    args = parser.parse_args()
+    print("endpoint",args.endpoint)
+
     oldHash = ""
 
     try:
@@ -103,9 +116,9 @@ if __name__ == "__main__":
         token=None
 
     while True:
-        gridHash = getCurrentState("meta/hashes/grid", token)
+        gridHash = getCurrentState("meta/hashes/grid", int(args.endpoint), token)
         if gridHash != oldHash:
-            run()
+            run(int(args.endpoint))
             oldHash = gridHash
         else:
             print("waiting for grid change")
