@@ -29,6 +29,7 @@ def getCurrentState(topic="", endpoint=-1, token=None):
         get_address = getFromCfg("input_url")+topic
     else:
         get_address = getFromCfg("input_urls")[endpoint]+topic
+
     if token is None:
         r = requests.get(get_address, headers={'Content-Type': 'application/json'})
     else:
@@ -41,7 +42,6 @@ def getCurrentState(topic="", endpoint=-1, token=None):
     return r.json()
 
 def sendToCityIO(data, endpoint=-1, token=None):
-    
     if endpoint == -1 or endpoint == None:
         post_address = getFromCfg("output_url")
     else:
@@ -101,7 +101,7 @@ def run(endpoint=-1, token=None):
     
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='calculate storm water amounts from cityIO.')
     parser.add_argument('--endpoint', type=int, default=-1,help="endpoint url to choose from config.ini/input_urls")
     args = parser.parse_args()
     print("endpoint",args.endpoint)
