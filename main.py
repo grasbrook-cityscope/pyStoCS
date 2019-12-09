@@ -67,10 +67,6 @@ def run(endpoint=-1, token=None):
     gridData = getCurrentState("grid", endpoint, token)
     gridHash = getCurrentState("meta/hashes/grid", endpoint, token)
 
-    # typejs = {}
-    # with open("typedefs.json") as file:
-    #     typejs = json.load(file)
-
     coefficients = {}
     with open("drainagecoefficients.json") as file:
         coefficients = json.load(file)
@@ -82,12 +78,6 @@ def run(endpoint=-1, token=None):
     for cell in gridData:
         if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
-        # if curtype in typejs["white"]:
-        #     numWhiteCells += 1
-        # elif curtype in typejs["grey"]:
-        #     numGreyCells += 1
-        # else:
-        #     numUnknownCells += 1
 
         if curtype == "open_space":
             if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
