@@ -67,9 +67,13 @@ def run(endpoint=-1, token=None):
     gridData = getCurrentState("grid", endpoint, token)
     gridHash = getCurrentState("meta/hashes/grid", endpoint, token)
 
-    typejs = {}
-    with open("typedefs.json") as file:
-        typejs = json.load(file)
+    # typejs = {}
+    # with open("typedefs.json") as file:
+    #     typejs = json.load(file)
+
+    coefficients = {}
+    with open("drainagecoefficients.json") as file:
+        coefficients = json.load(file)
 
     numWhiteCells = 0
     numGreyCells = 0
@@ -78,14 +82,35 @@ def run(endpoint=-1, token=None):
     for cell in gridData:
         if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
-        if curtype in typejs["white"]:
-            numWhiteCells += 1
-        elif curtype in typejs["grey"]:
-            numGreyCells += 1
+        # if curtype in typejs["white"]:
+        #     numWhiteCells += 1
+        # elif curtype in typejs["grey"]:
+        #     numGreyCells += 1
+        # else:
+        #     numUnknownCells += 1
+
+        if curtype == "open_space":
+            if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
+                numUnknownCells += 1
+                print(curtype,"unknown")
+                continue
+            curtype += "/" + gridDef.mapping[cell[gridDef.typeidx]]["os_type"]
+
+        if not curtype in coefficients:
+            numUnknownCells += 1
+            print(curtype,"unknown")
+            continue
+
+        if coefficients[curtype][0] == "white":
+            numWhiteCells += coefficients[curtype][1]
+        elif coefficients[curtype][0] == "grey":
+            numGreyCells += coefficients[curtype][1]
         else:
             numUnknownCells += 1
+            print(curtype,"unknown")
+            
 
-    expectedRain = 0.750 # in m³/m²a # todo: get from config
+    expectedRain = getFromCfg("expectedAnnualRain") # in m³/m²a
 
     whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
     graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain

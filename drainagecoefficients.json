@@ -1,4 +1,10 @@
 {
-    "1" : 1.0,
-    "2" : 0.2
+    "street" :                      ["grey" , 1.0],
+    "open_space/plaza":             ["grey" , 1.0],
+    "open_space/promenade":         ["grey" , 1.0],
+    "open_space/green_space":       ["white", 0.3],
+    "open_space/athletic_field" :   ["white", 0.6],
+    "open_space/water" :            ["white", 0.0],
+    "building" :                    ["white", 0.3],
+    "empty" :                       ["grey" , 0.0]
 }

@@ -19,6 +19,7 @@
         "https://cityio.media.mit.edu/api/table/update/grasbrook_herings/",
         "https://cityio.media.mit.edu/api/table/update/grasbrook_eis/",
         "https://cityio.media.mit.edu/api/table/update/grasbrook_mantel/"
-    ]
+    ],
 
+    "expectedAnnualRain" : 0.750
 }
