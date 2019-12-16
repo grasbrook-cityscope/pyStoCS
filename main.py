@@ -38,6 +38,7 @@ def getCurrentState(topic="", endpoint=-1, token=None):
     if not r.status_code == 200:
         print("could not get from cityIO")
         print("Error code", r.status_code)
+        return {}
 
     return r.json()
 
@@ -67,6 +68,7 @@ def run(endpoint=-1, token=None):
     gridData = getCurrentState("grid", endpoint, token)
     gridHash = getCurrentState("meta/hashes/grid", endpoint, token)
 
+    # dictionary of type(/openspace_type) : [["grey","white"], [0,1]], i.e. first index, wether it creates grey or white water, second index, drainage coefficient
     coefficients = {}
     with open("drainagecoefficients.json") as file:
         coefficients = json.load(file)
@@ -132,7 +134,7 @@ if __name__ == "__main__":
 
     while True:
         gridHash = getCurrentState("meta/hashes/grid", int(args.endpoint), token)
-        if gridHash != oldHash:
+        if gridHash != {} and gridHash != oldHash:
             run(int(args.endpoint))
             oldHash = gridHash
         else:
