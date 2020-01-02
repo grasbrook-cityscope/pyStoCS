@@ -2,6 +2,8 @@ import json
 import requests
 import time
 import argparse
+from typing import Optional
+
 
 class Table:
     cellSize = 0
@@ -18,29 +20,51 @@ class Table:
         ret.typeidx = data["block"].index("type")
         return ret
 
-def getFromCfg(key : str) -> str:
-    #import os#os.path.dirname(os.path.realpath(__file__)+
+
+def getFromCfg(key: str) -> str:
+    # import os#os.path.dirname(os.path.realpath(__file__)+
     with open("config.json") as file:
         js = json.load(file)
         return js[key]
 
+
+# returns the token for the endpoint
+# tokens.json is to be requested from admin
+def getToken(endpoint=-1) -> Optional[str]:
+    if endpoint == -1:
+        return None
+
+    try:
+        with open("tokens.json") as file:
+            js = json.load(file)
+            token = js['tokens'][endpoint]
+            if token == "":
+                token = None  # happens with empty file
+
+    except IOError:
+        token = None
+
+    return token
+
+
 def getCurrentState(topic="", endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
-        get_address = getFromCfg("input_url")+topic
+        get_address = getFromCfg("input_url") + topic
     else:
-        get_address = getFromCfg("input_urls")[endpoint]+topic
+        get_address = getFromCfg("input_urls")[endpoint] + topic
 
     if token is None:
         r = requests.get(get_address, headers={'Content-Type': 'application/json'})
     else:
-        r = requests.get(get_address, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
-    
+        r = requests.get(get_address, headers={'Content-Type': 'application/json',
+                                               'Authorization': 'Bearer {}'.format(token).rstrip()})
     if not r.status_code == 200:
         print("could not get from cityIO")
         print("Error code", r.status_code)
         return {}
 
     return r.json()
+
 
 def sendToCityIO(data, endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
@@ -51,16 +75,19 @@ def sendToCityIO(data, endpoint=-1, token=None):
     if token is None:
         r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json'})
     else:
-        r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
-    print(r)
+        r = requests.post(post_address, json=data,
+                          headers={'Content-Type': 'application/json',
+                                   'Authorization': 'Bearer {}'.format(token).rstrip()})
+        print(r)
     if not r.status_code == 200:
         print("could not post result to cityIO", post_address)
         print("Error code", r.status_code)
     else:
         print("Successfully posted to cityIO", post_address, r.status_code)
 
+
 def run(endpoint=-1, token=None):
-    gridDef = Table.fromCityIO(getCurrentState("header", token))
+    gridDef = Table.fromCityIO(getCurrentState("header", endpoint, token))
     if not gridDef:
         print("couldn't load input_url!")
         exit()
@@ -76,21 +103,21 @@ def run(endpoint=-1, token=None):
     numWhiteCells = 0
     numGreyCells = 0
     numUnknownCells = 0
-        
+
     for cell in gridData:
-        if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
+        if (cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
 
         if curtype == "open_space":
             if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
                 numUnknownCells += 1
-                print(curtype,"unknown")
+                print(curtype, "unknown")
                 continue
             curtype += "/" + gridDef.mapping[cell[gridDef.typeidx]]["os_type"]
 
         if not curtype in coefficients:
             numUnknownCells += 1
-            print(curtype,"unknown")
+            print(curtype, "unknown")
             continue
 
         if coefficients[curtype][0] == "white":
@@ -99,10 +126,9 @@ def run(endpoint=-1, token=None):
             numGreyCells += coefficients[curtype][1]
         else:
             numUnknownCells += 1
-            print(curtype,"unknown")
-            
+            print(curtype, "unknown")
 
-    expectedRain = getFromCfg("expectedAnnualRain") # in m³/m²a
+    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
 
     whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
     graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
@@ -112,31 +138,26 @@ def run(endpoint=-1, token=None):
     print("m³ grey water to be handled: ", graywater_m3)
     print("m³ unknown water to be handled: ", unknown_m3)
 
-    data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
+    data = {"unit": "cubic meters per annum", "white": whitewater_m3, "grey": graywater_m3, "unknown": unknown_m3,
+            "grid_hash": gridHash}
 
     sendToCityIO(data, endpoint, token)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='calculate storm water amounts from cityIO.')
-    parser.add_argument('--endpoint', type=int, default=-1,help="endpoint url to choose from config.ini/input_urls")
+    parser.add_argument('--endpoint', type=int, default=-1, help="endpoint url to choose from config.ini/input_urls")
     args = parser.parse_args()
-    print("endpoint",args.endpoint)
+    print("endpoint", args.endpoint)
+    token = getToken(args.endpoint)
 
     oldHash = ""
-
-    try:
-        with open("token.txt") as f:
-            token=f.readline()
-        if token=="": token = None # happens with empty file
-    except IOError:
-        token=None
 
     while True:
         gridHash = getCurrentState("meta/hashes/grid", int(args.endpoint), token)
         if gridHash != {} and gridHash != oldHash:
-            run(int(args.endpoint))
+            run(int(args.endpoint), token)
             oldHash = gridHash
         else:
             print("waiting for grid change")
-            time.sleep(10)
+            time.sleep(5)
