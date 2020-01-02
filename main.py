@@ -20,8 +20,9 @@ class Table:
         ret.typeidx = data["block"].index("type")
         return ret
 
-def getFromCfg(key : str) -> str:
-    #import os#os.path.dirname(os.path.realpath(__file__)+
+
+def getFromCfg(key: str) -> str:
+    # import os#os.path.dirname(os.path.realpath(__file__)+
     with open("config.json") as file:
         js = json.load(file)
         return js[key]
@@ -48,9 +49,9 @@ def getToken(endpoint=-1) -> Optional[str]:
 
 def getCurrentState(topic="", endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
-        get_address = getFromCfg("input_url")+topic
+        get_address = getFromCfg("input_url") + topic
     else:
-        get_address = getFromCfg("input_urls")[endpoint]+topic
+        get_address = getFromCfg("input_urls")[endpoint] + topic
 
     if token is None:
         r = requests.get(get_address, headers={'Content-Type': 'application/json'})
@@ -104,19 +105,19 @@ def run(endpoint=-1, token=None):
     numUnknownCells = 0
 
     for cell in gridData:
-        if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
+        if (cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
 
         if curtype == "open_space":
             if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
                 numUnknownCells += 1
-                print(curtype,"unknown")
+                print(curtype, "unknown")
                 continue
             curtype += "/" + gridDef.mapping[cell[gridDef.typeidx]]["os_type"]
 
         if not curtype in coefficients:
             numUnknownCells += 1
-            print(curtype,"unknown")
+            print(curtype, "unknown")
             continue
 
         if coefficients[curtype][0] == "white":
@@ -125,10 +126,9 @@ def run(endpoint=-1, token=None):
             numGreyCells += coefficients[curtype][1]
         else:
             numUnknownCells += 1
-            print(curtype,"unknown")
+            print(curtype, "unknown")
 
-
-    expectedRain = getFromCfg("expectedAnnualRain") # in m³/m²a
+    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
 
     whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
     graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
@@ -138,16 +138,17 @@ def run(endpoint=-1, token=None):
     print("m³ grey water to be handled: ", graywater_m3)
     print("m³ unknown water to be handled: ", unknown_m3)
 
-    data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
+    data = {"unit": "cubic meters per annum", "white": whitewater_m3, "grey": graywater_m3, "unknown": unknown_m3,
+            "grid_hash": gridHash}
 
     sendToCityIO(data, endpoint, token)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='calculate storm water amounts from cityIO.')
-    parser.add_argument('--endpoint', type=int, default=-1,help="endpoint url to choose from config.ini/input_urls")
+    parser.add_argument('--endpoint', type=int, default=-1, help="endpoint url to choose from config.ini/input_urls")
     args = parser.parse_args()
-    print("endpoint",args.endpoint)
+    print("endpoint", args.endpoint)
     token = getToken(args.endpoint)
 
     oldHash = ""
