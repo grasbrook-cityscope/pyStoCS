@@ -87,7 +87,7 @@ def sendToCityIO(data, endpoint=-1, token=None):
 
 
 def run(endpoint=-1, token=None):
-    gridDef = Table.fromCityIO(getCurrentState("header", token))
+    gridDef = Table.fromCityIO(getCurrentState("header", endpoint, token))
     if not gridDef:
         print("couldn't load input_url!")
         exit()
