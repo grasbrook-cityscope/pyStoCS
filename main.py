@@ -2,6 +2,8 @@ import json
 import requests
 import time
 import argparse
+from typing import Optional
+
 
 class Table:
     cellSize = 0
@@ -24,6 +26,26 @@ def getFromCfg(key : str) -> str:
         js = json.load(file)
         return js[key]
 
+
+# returns the token for the endpoint
+# tokens.json is to be requested from admin
+def getToken(endpoint=-1) -> Optional[str]:
+    if endpoint == -1:
+        return None
+
+    try:
+        with open("tokens.json") as file:
+            js = json.load(file)
+            token = js['tokens'][endpoint]
+            if token == "":
+                token = None  # happens with empty file
+
+    except IOError:
+        token = None
+
+    return token
+
+
 def getCurrentState(topic="", endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
         get_address = getFromCfg("input_url")+topic
@@ -33,14 +55,15 @@ def getCurrentState(topic="", endpoint=-1, token=None):
     if token is None:
         r = requests.get(get_address, headers={'Content-Type': 'application/json'})
     else:
-        r = requests.get(get_address, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
-    
+        r = requests.get(get_address, headers={'Content-Type': 'application/json',
+                                               'Authorization': 'Bearer {}'.format(token).rstrip()})
     if not r.status_code == 200:
         print("could not get from cityIO")
         print("Error code", r.status_code)
         return {}
 
     return r.json()
+
 
 def sendToCityIO(data, endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
@@ -51,13 +74,16 @@ def sendToCityIO(data, endpoint=-1, token=None):
     if token is None:
         r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json'})
     else:
-        r = requests.post(post_address, json=data, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
-    print(r)
+        r = requests.post(post_address, json=data,
+                          headers={'Content-Type': 'application/json',
+                                   'Authorization': 'Bearer {}'.format(token).rstrip()})
+        print(r)
     if not r.status_code == 200:
         print("could not post result to cityIO", post_address)
         print("Error code", r.status_code)
     else:
         print("Successfully posted to cityIO", post_address, r.status_code)
+
 
 def run(endpoint=-1, token=None):
     gridDef = Table.fromCityIO(getCurrentState("header", token))
@@ -76,7 +102,7 @@ def run(endpoint=-1, token=None):
     numWhiteCells = 0
     numGreyCells = 0
     numUnknownCells = 0
-        
+
     for cell in gridData:
         if(cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
@@ -100,7 +126,7 @@ def run(endpoint=-1, token=None):
         else:
             numUnknownCells += 1
             print(curtype,"unknown")
-            
+
 
     expectedRain = getFromCfg("expectedAnnualRain") # in m³/m²a
 
@@ -115,28 +141,22 @@ def run(endpoint=-1, token=None):
     data = {"unit":"cubic meters per annum","white":whitewater_m3,"grey":graywater_m3,"unknown":unknown_m3,"grid_hash":gridHash}
 
     sendToCityIO(data, endpoint, token)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='calculate storm water amounts from cityIO.')
     parser.add_argument('--endpoint', type=int, default=-1,help="endpoint url to choose from config.ini/input_urls")
     args = parser.parse_args()
     print("endpoint",args.endpoint)
+    token = getToken(args.endpoint)
 
     oldHash = ""
-
-    try:
-        with open("token.txt") as f:
-            token=f.readline()
-        if token=="": token = None # happens with empty file
-    except IOError:
-        token=None
 
     while True:
         gridHash = getCurrentState("meta/hashes/grid", int(args.endpoint), token)
         if gridHash != {} and gridHash != oldHash:
-            run(int(args.endpoint))
+            run(int(args.endpoint), token)
             oldHash = gridHash
         else:
             print("waiting for grid change")
-            time.sleep(10)
+            time.sleep(5)
