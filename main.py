@@ -174,7 +174,7 @@ def run(endpoint=-1, token=None):
     data.update(specificVolumes)
     print(data)
 
-    # sendToCityIO(data, endpoint, token)
+    sendToCityIO(data, endpoint, token)
 
 
 if __name__ == "__main__":
