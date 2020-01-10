@@ -1,10 +1,10 @@
 {
-    "street" :                      ["grey" , 1.0],
-    "open_space/plaza":             ["grey" , 1.0],
-    "open_space/promenade":         ["grey" , 1.0],
-    "open_space/green_space":       ["white", 0.3],
-    "open_space/athletic_field" :   ["white", 0.6],
-    "open_space/water" :            ["white", 0.0],
-    "building" :                    ["white", 0.3],
-    "empty" :                       ["grey" , 0.0]
+    "street" :                      ["street" , 0.9],
+    "promenade":                    ["street" , 0.7],
+    "open_space/promenade":         ["open" , 0.7],
+    "open_space/green_space":       ["open", 0.1],
+    "open_space/athletic_field" :   ["open", 0.5],
+    "open_space/water" :            ["unknown", 0.0],
+    "building" :                    ["building", 0.8],
+    "empty" :                       ["unknown" , 0.0]
 }

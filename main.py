@@ -103,10 +103,21 @@ def run(endpoint=-1, token=None):
     numWhiteCells = 0
     numGreyCells = 0
     numUnknownCells = 0
+    numStreetCells = 0
+    numBuildingCells = 0
+    numOpenCells = 0
+
+    specificVolumes = {}
 
     for cell in gridData:
         if (cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
+
+
+        if curtype == "street":
+            # handle promenade
+            if gridDef.mapping[cell[gridDef.typeidx]]["str_numLanes"] == 0:
+                curtype = "promenade"
 
         if curtype == "open_space":
             if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
@@ -120,28 +131,50 @@ def run(endpoint=-1, token=None):
             print(curtype, "unknown")
             continue
 
+        if curtype in specificVolumes:
+            specificVolumes[curtype] += coefficients[curtype][1]
+        else:
+            specificVolumes[curtype] = coefficients[curtype][1]
+
         if coefficients[curtype][0] == "white":
             numWhiteCells += coefficients[curtype][1]
         elif coefficients[curtype][0] == "grey":
             numGreyCells += coefficients[curtype][1]
+
+        elif coefficients[curtype][0] == "street":
+            numStreetCells += coefficients[curtype][1]
+        elif coefficients[curtype][0] == "building":
+            numBuildingCells += coefficients[curtype][1]
+        elif coefficients[curtype][0] == "open":
+            numOpenCells += coefficients[curtype][1]
         else:
             numUnknownCells += 1
-            print(curtype, "unknown")
+            # print(curtype, "unknown")
 
     expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
 
-    whitewater_m3 = numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain
-    graywater_m3 = numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain
-    unknown_m3 = numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain
+    whitewater_m3 = int(numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    graywater_m3 = int(numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    unknown_m3 = int(numUnknownCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
 
-    print("m³ white water to be handled: ", whitewater_m3)
-    print("m³ grey water to be handled: ", graywater_m3)
-    print("m³ unknown water to be handled: ", unknown_m3)
+    streetwater_m3 = int(numStreetCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    buildingwater_m3 = int(numBuildingCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+    open_m3 = int(numOpenCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
+
+    for key in specificVolumes:
+        specificVolumes[key] = int(specificVolumes[key] * gridDef.cellSize * gridDef.cellSize * expectedRain)
+
+    # print("m³ white water to be handled: ", whitewater_m3)
+    # print("m³ grey water to be handled: ", graywater_m3)
+    # print("m³ unknown water to be handled: ", unknown_m3)
 
     data = {"unit": "cubic meters per annum", "white": whitewater_m3, "grey": graywater_m3, "unknown": unknown_m3,
+            "street_total": streetwater_m3, "building_total": buildingwater_m3, "open_total": open_m3,
             "grid_hash": gridHash}
+    data.update(specificVolumes)
+    print(data)
 
-    sendToCityIO(data, endpoint, token)
+    # sendToCityIO(data, endpoint, token)
 
 
 if __name__ == "__main__":
