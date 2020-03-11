@@ -74,7 +74,7 @@ def sendToCityIO(data, endpoint=-1, token=None):
     
     except requests.exceptions.RequestException as e:
         print("CityIO error while POSTing!" + e)
-        return {}
+        return
 
 
 def run(endpoint=-1, token=None):
