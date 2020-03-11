@@ -12,6 +12,7 @@ class Table:
 
     @staticmethod
     def fromCityIO(data):
+        print("data", data)
         ret = Table()
         ret.cellSize = data["spatial"]["cellSize"]
         ret.ncols = data["spatial"]["ncols"]
@@ -26,25 +27,6 @@ def getFromCfg(key: str) -> str:
     with open("config.json") as file:
         js = json.load(file)
         return js[key]
-
-
-# returns the token for the endpoint
-# tokens.json is to be requested from admin
-def getToken(endpoint=-1) -> Optional[str]:
-    if endpoint == -1:
-        return None
-
-    try:
-        with open("tokens.json") as file:
-            js = json.load(file)
-            token = js['tokens'][endpoint]
-            if token == "":
-                token = None  # happens with empty file
-
-    except IOError:
-        token = None
-
-    return token
 
 
 def getCurrentState(topic="", endpoint=-1, token=None):
@@ -191,7 +173,13 @@ if __name__ == "__main__":
     parser.add_argument('--endpoint', type=int, default=-1, help="endpoint url to choose from config.ini/input_urls")
     args = parser.parse_args()
     print("endpoint", args.endpoint)
-    token = getToken(args.endpoint)
+
+    try:
+        with open("token.txt") as f:
+            token = f.readline()
+        if token == "": token = None  # happens with empty file
+    except IOError:
+        token = None
 
     oldHash = ""
 
