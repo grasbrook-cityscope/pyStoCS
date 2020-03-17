@@ -88,6 +88,8 @@ def run(endpoint=-1, token=None):
     with open("drainagecoefficients.json") as file:
         coefficients = json.load(file)
 
+    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
+    
     numWhiteCells = 0
     numGreyCells = 0
     numUnknownCells = 0
@@ -145,9 +147,7 @@ def run(endpoint=-1, token=None):
             # print(curtype, "unknown")
             continue
 
-        filledGrid.append({"type":curtype, "amount":coefficients[curtype][1]})
-
-    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
+        filledGrid.append({"type":curtype, "amount": (coefficients[curtype][1] * gridDef.cellSize * gridDef.cellSize * expectedRain) } )
 
     whitewater_m3 = int(numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
     graywater_m3 = int(numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
