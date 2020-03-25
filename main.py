@@ -3,31 +3,30 @@ import requests
 import time
 import argparse
 from typing import Optional
+from geo import Table
+from geo import createGeoJSON
 
+# class Table:
+#     cellSize = 0
+#     ncols = 0
+#     nrows = 0
 
-class Table:
-    cellSize = 0
-    ncols = 0
-    nrows = 0
-
-    @staticmethod
-    def fromCityIO(data):
-        print("data", data)
-        ret = Table()
-        ret.cellSize = data["spatial"]["cellSize"]
-        ret.ncols = data["spatial"]["ncols"]
-        ret.nrows = data["spatial"]["nrows"]
-        ret.mapping = data["mapping"]["type"]
-        ret.typeidx = data["block"].index("type")
-        return ret
-
+#     @staticmethod
+#     def fromCityIO(data):
+#         print("data", data)
+#         ret = Table()
+#         ret.cellSize = data["spatial"]["cellSize"]
+#         ret.ncols = data["spatial"]["ncols"]
+#         ret.nrows = data["spatial"]["nrows"]
+#         ret.mapping = data["mapping"]["type"]
+#         ret.typeidx = data["block"].index("type")
+#         return ret
 
 def getFromCfg(key: str) -> str:
     # import os#os.path.dirname(os.path.realpath(__file__)+
     with open("config.json") as file:
         js = json.load(file)
         return js[key]
-
 
 def getCurrentState(topic="", endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
@@ -50,7 +49,6 @@ def getCurrentState(topic="", endpoint=-1, token=None):
     except requests.exceptions.RequestException as e:
         print("CityIO error while GETting!" + str(e))
         return {}
-
 
 def sendToCityIO(data, endpoint=-1, token=None):
     if endpoint == -1 or endpoint == None:
@@ -76,7 +74,6 @@ def sendToCityIO(data, endpoint=-1, token=None):
         print("CityIO error while POSTing!" + str(e))
         return
 
-
 def run(endpoint=-1, token=None):
     gridDef = Table.fromCityIO(getCurrentState("header", endpoint, token))
     if not gridDef:
@@ -91,6 +88,8 @@ def run(endpoint=-1, token=None):
     with open("drainagecoefficients.json") as file:
         coefficients = json.load(file)
 
+    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
+    
     numWhiteCells = 0
     numGreyCells = 0
     numUnknownCells = 0
@@ -99,11 +98,13 @@ def run(endpoint=-1, token=None):
     numOpenCells = 0
 
     specificVolumes = {}
+    filledGrid = []
 
     for cell in gridData:
-        if (cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): continue
+        if (cell is None or not "type" in gridDef.mapping[cell[gridDef.typeidx]]): 
+            filledGrid.append({})
+            continue
         curtype = gridDef.mapping[cell[gridDef.typeidx]]["type"]
-
 
         if curtype == "street":
             # handle promenade
@@ -114,12 +115,14 @@ def run(endpoint=-1, token=None):
             if gridDef.mapping[cell[gridDef.typeidx]]["os_type"] is None:
                 numUnknownCells += 1
                 print(curtype, "unknown")
+                filledGrid.append({})
                 continue
             curtype += "/" + gridDef.mapping[cell[gridDef.typeidx]]["os_type"]
 
         if not curtype in coefficients:
             numUnknownCells += 1
             print(curtype, "unknown")
+            filledGrid.append({})
             continue
 
         if curtype in specificVolumes:
@@ -140,9 +143,11 @@ def run(endpoint=-1, token=None):
             numOpenCells += coefficients[curtype][1]
         else:
             numUnknownCells += 1
+            filledGrid.append({})
             # print(curtype, "unknown")
+            continue
 
-    expectedRain = getFromCfg("expectedAnnualRain")  # in m³/m²a
+        filledGrid.append({"type":curtype, "amount": (coefficients[curtype][1] * gridDef.cellSize * gridDef.cellSize * expectedRain) } )
 
     whitewater_m3 = int(numWhiteCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
     graywater_m3 = int(numGreyCells * gridDef.cellSize * gridDef.cellSize * expectedRain)
@@ -163,7 +168,11 @@ def run(endpoint=-1, token=None):
             "street_total": streetwater_m3, "building_total": buildingwater_m3, "open_total": open_m3,
             "grid_hash": gridHash}
     data.update(specificVolumes)
-    print(data)
+
+    geojsonstring = createGeoJSON(filledGrid, gridDef)
+    # print(geojsonstring)
+    data["geojson"] = json.loads(geojsonstring)
+    # print(data)
 
     sendToCityIO(data, endpoint, token)
 
